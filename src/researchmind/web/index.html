@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumina | Dynamic Research-Paper Ingestion & Grounded RAG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-logo">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          <path d="M12 6v6"></path>
+          <path d="M9 9h6"></path>
+        </svg>
+        <div class="brand-text">
+          <span class="brand-name">Lumina</span>
+          <span class="version-tag">v2.0 Dynamic</span>
+        </div>
+      </div>
+      <div class="corpus-badge" id="corpusBadge">
+        <span class="status-dot"></span>
+        <span id="corpusPaperCount">Loading corpus...</span>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="session-pill">
+        <span class="session-label">Session:</span>
+        <span class="session-id" id="sessionIdDisplay">user_session_1</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="btnOpenOnlineSearch">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <span>Discover Online Papers</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Three-Column Layout -->
+  <main class="app-layout">
+    <!-- Left Panel: Scope & Paper Management -->
+    <aside class="sidebar-panel">
+      <!-- Knowledge Scope Selector -->
+      <section class="sidebar-section">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          Knowledge Scope
+        </div>
+        <div class="scope-options" id="scopeContainer">
+          <label class="scope-card active" data-scope="global">
+            <input type="radio" name="scope" value="global" checked>
+            <div class="scope-card-content">
+              <span class="scope-name">Lumina KB</span>
+              <span class="scope-desc">316 peer-reviewed papers (48,630 chunks)</span>
+            </div>
+            <span class="scope-badge blue">Global</span>
+          </label>
+
+          <label class="scope-card" data-scope="this_paper">
+            <input type="radio" name="scope" value="this_paper">
+            <div class="scope-card-content">
+              <span class="scope-name">This Paper Only</span>
+              <span class="scope-desc">Zero cross-paper contamination</span>
+            </div>
+            <span class="scope-badge purple">Target</span>
+          </label>
+
+          <label class="scope-card" data-scope="user_papers">
+            <input type="radio" name="scope" value="user_papers">
+            <div class="scope-card-content">
+              <span class="scope-name">My Uploaded Papers</span>
+              <span class="scope-desc">Session-scoped documents only</span>
+            </div>
+            <span class="scope-badge green">Uploads</span>
+          </label>
+
+          <label class="scope-card" data-scope="global_plus_user">
+            <input type="radio" name="scope" value="global_plus_user">
+            <div class="scope-card-content">
+              <span class="scope-name">KB + My Uploads</span>
+              <span class="scope-desc">Combined scientific synthesis</span>
+            </div>
+            <span class="scope-badge amber">Combined</span>
+          </label>
+
+          <label class="scope-card" data-scope="global_plus_user_plus_online">
+            <input type="radio" name="scope" value="global_plus_user_plus_online">
+            <div class="scope-card-content">
+              <span class="scope-name">KB + Uploads + Online</span>
+              <span class="scope-desc">Global + Custom + arXiv / S2</span>
+            </div>
+            <span class="scope-badge rose">All</span>
+          </label>
+        </div>
+
+        <!-- Target Paper Dropdown (Shown when 'this_paper' is selected) -->
+        <div class="target-paper-container" id="targetPaperContainer" style="display: none;">
+          <label class="input-label" for="targetPaperSelect">Target Paper:</label>
+          <select id="targetPaperSelect" class="form-select">
+            <option value="">-- Select a target paper --</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Paper Upload Section -->
+      <section class="sidebar-section">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          Upload Research Paper
+        </div>
+        <div class="upload-dropzone" id="uploadDropzone">
+          <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+          <div class="dropzone-icon">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="12" y1="18" x2="12" y2="12"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <p class="dropzone-text">Drag & drop research PDF here</p>
+          <span class="dropzone-hint">or click to browse files</span>
+        </div>
+
+        <!-- Live Ingestion Status Cards -->
+        <div class="ingestion-jobs-list" id="ingestionJobsList"></div>
+      </section>
+
+      <!-- Session Papers List -->
+      <section class="sidebar-section flex-grow">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          Indexed Papers (<span id="sessionPapersCount">0</span>)
+        </div>
+        <div class="papers-list-scroll" id="indexedPapersList">
+          <div class="empty-state-small">No custom papers uploaded yet in this session.</div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Center Panel: Query Interface & Grounded Synthesis -->
+    <section class="main-panel">
+      <!-- Query Suggestions Bar -->
+      <div class="query-suggestions-bar">
+        <span class="suggestions-label">Try:</span>
+        <button class="suggestion-chip" data-query="What is on-policy distillation in ADOPD and how does it prevent language bias?">ADOPD Distillation</button>
+        <button class="suggestion-chip" data-query="Explain how agreement-based audio-visual segmentation operates in MeViS.">MeViS Segmentation</button>
+        <button class="suggestion-chip" data-query="What are the architectural innovations of DeepSeek-V3 MoE models?">DeepSeek-V3 MoE</button>
+      </div>
+
+      <!-- Chat / Conversation History & Answer View -->
+      <div class="chat-viewport" id="chatViewport">
+        <!-- Welcome Card -->
+        <div class="welcome-card" id="welcomeCard">
+          <div class="welcome-badge">Grounded Scientific Assistant</div>
+          <h2>Accelerate Your Scientific Literature Research</h2>
+          <p>
+            Lumina indexes peer-reviewed papers with exact bounding-box passage grounding.
+            Upload your own papers or search arXiv to perform multi-document synthesis with verifiable citations.
+          </p>
+          <div class="welcome-features">
+            <div class="feature-item">
+              <span class="feature-icon">🛡️</span>
+              <span><strong>Strict Scoping:</strong> Isolate queries to specific papers with zero hallucination.</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">⚡</span>
+              <span><strong>Incremental Indexing:</strong> Upload papers without rebuilding 48k baseline vectors.</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">🎯</span>
+              <span><strong>PDF Synced Citations:</strong> Click [C1] to view highlighted passages in the PDF viewer.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Answers will be appended here -->
+        <div id="messagesContainer"></div>
+      </div>
+
+      <!-- Evidence Sufficiency Prompt Banner (Appears dynamically) -->
+      <div class="evidence-prompt-banner" id="evidencePromptBanner" style="display: none;">
+        <div class="evidence-prompt-icon">⚠️</div>
+        <div class="evidence-prompt-content">
+          <div class="evidence-prompt-title">Local Corpus Lacks Sufficient Evidence</div>
+          <div class="evidence-prompt-desc" id="evidencePromptDesc">
+            Relevance score is below threshold (τ = 0.35). Would you like to search external sources (arXiv & Semantic Scholar)?
+          </div>
+        </div>
+        <div class="evidence-prompt-actions">
+          <button class="btn btn-primary btn-sm" id="btnAcceptOnlineSearch">Search External Sources</button>
+          <button class="btn btn-ghost btn-sm" id="btnDismissOnlineSearch">Dismiss</button>
+        </div>
+      </div>
+
+      <!-- Query Input Area -->
+      <div class="query-input-bar">
+        <form id="queryForm" class="query-form">
+          <textarea
+            id="queryInput"
+            rows="1"
+            placeholder="Ask a scientific research question (e.g. methodology, benchmarks, ablations)..."
+            required
+          ></textarea>
+          <button type="submit" class="btn btn-primary" id="btnSubmitQuery">
+            <span>Query</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Right Panel: Interactive PDF Viewer & Citation Inspector -->
+    <aside class="viewer-panel" id="viewerPanel">
+      <div class="viewer-header">
+        <div class="viewer-title-row">
+          <span class="viewer-badge">PDF Viewer</span>
+          <span class="viewer-paper-title" id="viewerPaperTitle">No paper loaded</span>
+        </div>
+        <div class="viewer-controls">
+          <button class="viewer-ctrl-btn" id="btnPrevPage" title="Previous Page">◀</button>
+          <span class="page-indicator">Page <span id="currentPageNum">1</span></span>
+          <button class="viewer-ctrl-btn" id="btnNextPage" title="Next Page">▶</button>
+          <a class="viewer-ctrl-btn" id="btnOpenPdfTab" target="_blank" title="Open PDF in new tab">↗</a>
+        </div>
+      </div>
+
+      <!-- Passage Highlight Inspector -->
+      <div class="passage-inspector" id="passageInspector" style="display: none;">
+        <div class="inspector-header">
+          <span class="inspector-badge" id="inspectorCitationId">[C1]</span>
+          <span class="inspector-section" id="inspectorSection">Methodology</span>
+          <button class="inspector-close" id="btnCloseInspector">×</button>
+        </div>
+        <div class="inspector-snippet" id="inspectorSnippet">
+          "Passage text will appear here..."
+        </div>
+        <div class="inspector-footer">
+          <span id="inspectorPage">Page 1</span>
+          <span id="inspectorScore">Relevance: 0.89</span>
+        </div>
+      </div>
+
+      <!-- PDF Frame Viewport -->
+      <div class="pdf-viewport-container">
+        <iframe id="pdfFrame" class="pdf-iframe" src="about:blank"></iframe>
+        <div class="viewer-placeholder" id="viewerPlaceholder">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          <p>Click any citation [C1] or select a paper from the list to view the original PDF document.</p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Online Research Discovery Modal -->
+  <div class="modal-backdrop" id="onlineSearchModal" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <h3>Online Research Discovery</h3>
+          <p>Search arXiv and Semantic Scholar to discover and ingest papers directly into your session.</p>
+        </div>
+        <button class="modal-close" id="btnCloseModal">×</button>
+      </div>
+
+      <div class="modal-search-box">
+        <input type="text" id="onlineSearchQuery" placeholder="Search by topic, paper title, or author...">
+        <select id="onlineSearchProvider" class="form-select form-select-sm">
+          <option value="all">All (arXiv + Semantic Scholar)</option>
+          <option value="arxiv">arXiv Only</option>
+          <option value="semantic_scholar">Semantic Scholar Only</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="btnExecuteOnlineSearch">Search</button>
+      </div>
+
+      <div class="modal-results-container" id="onlineSearchResults">
+        <div class="empty-state">Enter a scientific search query above to discover papers.</div>
+      </div>
+
+      <div class="modal-footer">
+        <div class="selected-count">
+          <span id="selectedCandidatesCount">0</span> paper(s) selected
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="btnCancelModal">Cancel</button>
+          <button class="btn btn-primary" id="btnIngestSelectedCandidates" disabled>
+            Ingest Selected Papers
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
